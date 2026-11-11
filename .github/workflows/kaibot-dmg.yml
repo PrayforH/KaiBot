@@ -2,8 +2,11 @@
 #
 # There is no Apple Developer ID here, so electron-builder is told
 # `mac.identity: null` and scripts/after-pack.mjs ad-hoc signs each app
-# (KAI_BOT_ADHOC_SIGN=1). macOS still quarantines the download; the release
-# notes carry the one-line fix.
+# (KAI_BOT_ADHOC_SIGN=1). macOS still quarantines the download; the notes in
+# .github/kaibot-dmg-notes.md carry the one-line fix.
+#
+# The DMGs are uploaded as private workflow artifacts only. This fork does not
+# publish them to GitHub Releases; download them with `gh run download`.
 name: KaiBot macOS DMG
 
 on:
@@ -13,16 +16,11 @@ on:
         description: "Branch, tag or commit to build (defaults to this run's ref)"
         required: false
         type: string
-      release:
-        description: "Create or update the GitHub release"
-        required: false
-        type: boolean
-        default: true
   push:
     tags: ["kaibot-dmg-*"]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: kaibot-dmg-${{ inputs.ref || github.ref }}
@@ -100,33 +98,3 @@ jobs:
             release/latest-mac.yml
             release/*.blockmap
           if-no-files-found: error
-
-      - name: Publish the GitHub release
-        if: ${{ github.event_name == 'push' || inputs.release }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          version=$(node -p "require('./package.json').version")
-          tag="kaibot-dmg-$version"
-          assets=(
-            "release/KaiBot-$version-arm64.dmg"
-            "release/KaiBot-$version-x64.dmg"
-            "release/KaiBot-$version-arm64.zip"
-            "release/KaiBot-$version-x64.zip"
-            "release/KaiBot-$version-arm64.dmg.blockmap"
-            "release/KaiBot-$version-x64.dmg.blockmap"
-            "release/KaiBot-$version-arm64.zip.blockmap"
-            "release/KaiBot-$version-x64.zip.blockmap"
-            "release/latest-mac.yml"
-          )
-          for asset in "${assets[@]}"; do
-            test -f "$asset" || { echo "::error::missing $asset"; exit 1; }
-          done
-          if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" "${assets[@]}" --clobber
-            gh release edit "$tag" --notes-file .github/kaibot-dmg-notes.md
-          else
-            gh release create "$tag" "${assets[@]}" \
-              --title "KaiBot $version (macOS)" \
-              --notes-file .github/kaibot-dmg-notes.md
-          fi

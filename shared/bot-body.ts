@@ -2,19 +2,23 @@
 
 import { z } from "zod";
 
-import { DEFAULT_MASCOT_BODY, MASCOT_BODY_IDS } from "./mascot-bodies.ts";
+import { BOT_ICON_SHAPES, DEFAULT_BOT_ICON_SHAPE, botIconShapeSchema, type BotIconShape } from "./bot-icons.ts";
+import { MASCOT_BODY_IDS, mascotBodySchema, type MascotBodyId } from "./mascot-bodies.ts";
 import { CARVED_BODY_IDS, DIWALI_BODY_IDS, HALLOWEEN_BODY_IDS, type CarvedBodyId } from "./carved-bodies.ts";
 import type { MausColor } from "./wire.ts";
 
-export const BOT_BODY_IDS = [...MASCOT_BODY_IDS, ...CARVED_BODY_IDS] as const;
+/** Every body a bot can wear: the icon silhouettes, the old gradient bodies and the festival bodies. */
+export type BotBodyId = MascotBodyId | CarvedBodyId | BotIconShape;
 
-export type BotBodyId = (typeof BOT_BODY_IDS)[number];
+export const BOT_BODY_IDS: readonly BotBodyId[] = [
+  ...new Set<BotBodyId>([...MASCOT_BODY_IDS, ...CARVED_BODY_IDS, ...BOT_ICON_SHAPES]),
+];
 
-export const botBodySchema = z.enum(BOT_BODY_IDS);
+export const botBodySchema = z.union([mascotBodySchema, z.enum(CARVED_BODY_IDS), botIconShapeSchema]);
 
 /** Runtime-safe read of an untrusted persisted or streamed body id. */
 export function botBodyId(value: unknown): BotBodyId {
-  return botBodySchema.safeParse(value).data ?? DEFAULT_MASCOT_BODY;
+  return botBodySchema.safeParse(value).data ?? DEFAULT_BOT_ICON_SHAPE;
 }
 
 export function isCarvedBody(value: unknown): value is CarvedBodyId {

@@ -13,6 +13,7 @@ import {
   clampAvatarZoom,
   type BotAvatarCrop,
 } from "../../shared/bot-avatar";
+import { DEFAULT_BOT_ICON_SHAPE } from "../../shared/bot-icons";
 import { BotAvatar } from "./Avatar";
 import { useBotEditor } from "./bot-settings/BotEditorContext";
 
@@ -20,7 +21,7 @@ export type AvatarPatch = Partial<
   Pick<Bot, "avatarCrop" | "avatarUrl" | "avatarZoom" | "avatarFocusX" | "avatarFocusY" | "color" | "mascotExpression" | "mascotBody" | "mascotFaceColor">
 >;
 
-export const RESET_MASCOT_PATCH: AvatarPatch = { avatarCrop: "mascot", color: "green", mascotExpression: null, mascotBody: "cursor", mascotFaceColor: null };
+export const RESET_MASCOT_PATCH: AvatarPatch = { avatarCrop: "mascot", color: "green", mascotExpression: null, mascotBody: DEFAULT_BOT_ICON_SHAPE, mascotFaceColor: null };
 
 export const CROP_LABEL = {
   mascot: "Mascot",

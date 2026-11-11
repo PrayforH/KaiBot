@@ -6,6 +6,8 @@ import type { Routine } from "@/lib/routines";
 import type { MemoryDoc } from "@/lib/memory";
 import type { Bot, BotSettingsSection, InstanceInfo } from "@/state/store";
 import { AVATAR_FOCUS_CENTER, AVATAR_ZOOM_MIN } from "../../shared/bot-avatar";
+import { BOT_ICON_NAMES, BOT_ICON_SHAPES, resolvedBotIconShape } from "../../shared/bot-icons";
+import { DIWALI_BODY_IDS, HALLOWEEN_BODY_IDS } from "../../shared/carved-bodies";
 import type { ManagedSkill } from "./bot-settings/SkillsSection";
 import type { McpServerSummary } from "@/lib/mcp-servers";
 import type { BotApps } from "./bot-settings/useBotApps";
@@ -507,17 +509,18 @@ describe("the hero", () => {
 describe("the avatar editor", () => {
   const editor = (bot: Bot) => capture(() => AvatarEditorCard({ bot, activeState: "idle", onPatch: patch, onClose }));
 
-  it("shows the ten bodies and twelve colors, with the festival bodies and the faces behind More looks", () => {
+  it("shows every bot icon shape and twelve colors, with the festival bodies and the faces behind More looks", () => {
     const bot = makeBot();
     const rendered = editor(bot);
-    expect(rendered.html.match(/aria-label="Use the \w+ body"/g)).toHaveLength(10);
+    expect(rendered.html.match(/aria-label="Use the [\w ]+ body"/g)).toHaveLength(BOT_ICON_SHAPES.length);
     expect(rendered.html.match(/aria-label="Use \w+ mascot color"/g)).toHaveLength(12);
     expect(rendered.html).not.toContain(">Halloween<");
     expect(rendered.html).not.toContain(">Diwali<");
     expect(has(rendered, "data-avatar-face", "idle")).toBe(false);
-    expect(find(rendered, "aria-label", "Use the Cursor body").props["aria-pressed"]).toBe(true);
-    click(find(rendered, "aria-label", "Use the Blob body"));
-    expect(patch).toHaveBeenLastCalledWith({ mascotBody: "blob" });
+    const defaultBody = resolvedBotIconShape(undefined, bot.id);
+    expect(find(rendered, "aria-label", `Use the ${BOT_ICON_NAMES[defaultBody]} body`).props["aria-pressed"]).toBe(true);
+    click(find(rendered, "aria-label", "Use the Bear body"));
+    expect(patch).toHaveBeenLastCalledWith({ mascotBody: "bear" });
     click(find(rendered, "aria-label", "Use blue mascot color"));
     expect(patch).toHaveBeenLastCalledWith({ color: "blue" });
     expect(find(rendered, "aria-label", "Use silver mascot color").props.title).toBe("Silver");
@@ -533,7 +536,9 @@ describe("the avatar editor", () => {
     click(more);
     const open = editor(bot);
     expect(find(open, "data-avatar-more").props["aria-expanded"]).toBe(true);
-    expect(open.html.match(/aria-label="Use the [\w ]+ body"/g)).toHaveLength(30);
+    expect(open.html.match(/aria-label="Use the [\w ]+ body"/g)).toHaveLength(
+      BOT_ICON_SHAPES.length + HALLOWEEN_BODY_IDS.length + DIWALI_BODY_IDS.length,
+    );
     expect(open.html).toContain(">Halloween<");
     expect(open.html).toContain(">Diwali<");
     click(find(open, "aria-label", "Use the Pumpkin body"));
@@ -559,13 +564,13 @@ describe("the avatar editor", () => {
   it("switches back to the mascot when a body is picked over a picture", () => {
     const bot = makeBot({ avatarUrl: "/api/attachments/cat.webp", avatarCrop: "circle" });
     click(find(editor(bot), "data-avatar-tab", "bot"));
-    click(find(editor(bot), "aria-label", "Use the Star body"));
-    expect(patch).toHaveBeenLastCalledWith({ mascotBody: "star", avatarCrop: "mascot" });
+    click(find(editor(bot), "aria-label", "Use the Fox body"));
+    expect(patch).toHaveBeenLastCalledWith({ mascotBody: "fox", avatarCrop: "mascot" });
   });
 
   it("resets the mascot as the Advanced card does", () => {
     click(find(editor(makeBot()), "data-avatar-reset"));
-    expect(patch).toHaveBeenLastCalledWith({ avatarCrop: "mascot", color: "green", mascotExpression: null, mascotBody: "cursor", mascotFaceColor: null });
+    expect(patch).toHaveBeenLastCalledWith({ avatarCrop: "mascot", color: "green", mascotExpression: null, mascotBody: "fox", mascotFaceColor: null });
   });
 
   it("edits facial feature color without changing body color or expression", () => {

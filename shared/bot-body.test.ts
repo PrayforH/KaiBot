@@ -1,22 +1,26 @@
 import { describe, expect, it } from "vitest";
 
 import { BOT_BODY_IDS, FESTIVAL_IDS, FESTIVALS, botBodyId, botBodySchema, isCarvedBody, isFestival } from "./bot-body.ts";
+import { BOT_ICON_SHAPES } from "./bot-icons.ts";
 import { CARVED_BODY_IDS } from "./carved-bodies.ts";
 import { MASCOT_BODY_IDS } from "./mascot-bodies.ts";
 import { MAUS_COLOR_NAMES } from "./wire.ts";
 
 describe("bot bodies", () => {
-  it("accepts every gradient body and every festival body", () => {
-    expect(BOT_BODY_IDS).toEqual([...MASCOT_BODY_IDS, ...CARVED_BODY_IDS]);
+  it("accepts every icon silhouette, gradient body and festival body exactly once", () => {
+    expect(new Set(BOT_BODY_IDS)).toEqual(new Set([...MASCOT_BODY_IDS, ...CARVED_BODY_IDS, ...BOT_ICON_SHAPES]));
+    expect(new Set(BOT_BODY_IDS).size).toBe(BOT_BODY_IDS.length);
     for (const id of BOT_BODY_IDS) expect(botBodySchema.safeParse(id).success).toBe(true);
   });
 
-  it("falls back to the cursor for anything it does not know", () => {
+  it("falls back to the fox for anything it does not know", () => {
     expect(botBodyId("pumpkin")).toBe("pumpkin");
     expect(botBodyId("laddu")).toBe("laddu");
     expect(botBodyId("star")).toBe("star");
-    expect(botBodyId("hexagram")).toBe("cursor");
-    expect(botBodyId(undefined)).toBe("cursor");
+    expect(botBodyId("arch")).toBe("fox");
+    expect(botBodyId("wedge")).toBe("fox");
+    expect(botBodyId("hexagram")).toBe("fox");
+    expect(botBodyId(undefined)).toBe("fox");
   });
 
   it("tells the festival bodies apart", () => {
