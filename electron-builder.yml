@@ -15,8 +15,8 @@ protocols:
 # stranded on its installed version.
 publish:
   - provider: github
-    owner: milind-soni
-    repo: OpenMausBot
+    owner: PrayforH
+    repo: KaiBot
 
 directories:
   buildResources: build
@@ -106,6 +106,11 @@ mac:
       arch: [arm64, x64]
   icon: build/icon.icns
   category: public.app-category.productivity
+  # This fork has no Apple Developer ID. Declaring it here keeps electron-builder
+  # from searching the keychain; scripts/after-pack.mjs then ad-hoc signs each
+  # app when KAI_BOT_ADHOC_SIGN=1, because Apple silicon refuses to launch an
+  # unsigned bundle.
+  identity: null
   hardenedRuntime: true
   gatekeeperAssess: false
   entitlements: build/entitlements.mac.plist
@@ -146,11 +151,13 @@ mac:
   notarize: false
 
 dmg:
-  sign: true
+  # No Developer ID in this fork: signing the disk image itself has nothing to
+  # sign with, and the ad-hoc signature lives on the app inside.
+  sign: false
   # ${arch} is load-bearing: without it the x64 dmg silently overwrites
   # the arm64 one when both arches build (this section overrides both the
   # top-level and mac-level artifactName, so it must carry the arch itself)
-  artifactName: OpenMausBot-${version}-${arch}.dmg
+  artifactName: KaiBot-${version}-${arch}.dmg
   # x/y are icon centres in points. electron-builder 26.15.3 sizes the window
   # from build/background.png and ignores dmg.window whenever a background is set.
   iconSize: 112

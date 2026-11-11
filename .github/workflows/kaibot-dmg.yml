@@ -1,0 +1,132 @@
+# Unnotarized KaiBot DMGs for this fork.
+#
+# There is no Apple Developer ID here, so electron-builder is told
+# `mac.identity: null` and scripts/after-pack.mjs ad-hoc signs each app
+# (KAI_BOT_ADHOC_SIGN=1). macOS still quarantines the download; the release
+# notes carry the one-line fix.
+name: KaiBot macOS DMG
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch, tag or commit to build (defaults to this run's ref)"
+        required: false
+        type: string
+      release:
+        description: "Create or update the GitHub release"
+        required: false
+        type: boolean
+        default: true
+  push:
+    tags: ["kaibot-dmg-*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kaibot-dmg-${{ inputs.ref || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  dmg:
+    name: macOS arm64 + x64 (ad-hoc signed)
+    runs-on: macos-15
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@ff378ebe6b225b0680b81c1ad4498ae0d1d3a5e3 # v6.0.10
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Clean generated output
+        run: rm -rf dist dist-server dist-native release
+
+      - name: Package both architectures
+        # macos-15 runners have 7 GB; the server typecheck needs more than Node's
+        # default heap (same reason as the upstream Release workflow).
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+          KAI_BOT_ADHOC_SIGN: "1"
+        run: pnpm package:mac
+
+      - name: "Gate: both apps are ad-hoc signed"
+        run: |
+          for app in release/mac-arm64/KaiBot.app release/mac/KaiBot.app; do
+            test -d "$app" || { echo "::error::missing $app"; exit 1; }
+            codesign --verify --deep --strict "$app"
+            codesign -dv --verbose=2 "$app" 2>&1 | grep -q 'Signature=adhoc' || {
+              echo "::error::$app is not ad-hoc signed"; exit 1; }
+            echo "ok: $app"
+          done
+
+      - name: "Gate: app-update points at this fork"
+        run: |
+          for app in release/mac-arm64/KaiBot.app release/mac/KaiBot.app; do
+            update="$app/Contents/Resources/app-update.yml"
+            test -f "$update" || { echo "::error::missing $update"; exit 1; }
+            grep -Eq '^owner: PrayforH$' "$update" || { echo "::error::wrong update owner in $update"; exit 1; }
+            grep -Eq '^repo: KaiBot$' "$update" || { echo "::error::wrong update repo in $update"; exit 1; }
+          done
+
+      - name: "Gate: each DMG mounts with the signed app inside"
+        run: |
+          for dmg in release/KaiBot-*.dmg; do
+            mount="$(mktemp -d)"
+            hdiutil attach "$dmg" -nobrowse -readonly -mountpoint "$mount" >/dev/null
+            test -d "$mount/KaiBot.app" || {
+              hdiutil detach "$mount" >/dev/null
+              echo "::error::$dmg has no KaiBot.app"; exit 1; }
+            codesign --verify --deep --strict "$mount/KaiBot.app"
+            hdiutil detach "$mount" >/dev/null
+            echo "ok: $dmg"
+          done
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: kaibot-macos-dmg
+          path: |
+            release/KaiBot-*.dmg
+            release/KaiBot-*.zip
+            release/latest-mac.yml
+            release/*.blockmap
+          if-no-files-found: error
+
+      - name: Publish the GitHub release
+        if: ${{ github.event_name == 'push' || inputs.release }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(node -p "require('./package.json').version")
+          tag="kaibot-dmg-$version"
+          assets=(
+            "release/KaiBot-$version-arm64.dmg"
+            "release/KaiBot-$version-x64.dmg"
+            "release/KaiBot-$version-arm64.zip"
+            "release/KaiBot-$version-x64.zip"
+            "release/KaiBot-$version-arm64.dmg.blockmap"
+            "release/KaiBot-$version-x64.dmg.blockmap"
+            "release/KaiBot-$version-arm64.zip.blockmap"
+            "release/KaiBot-$version-x64.zip.blockmap"
+            "release/latest-mac.yml"
+          )
+          for asset in "${assets[@]}"; do
+            test -f "$asset" || { echo "::error::missing $asset"; exit 1; }
+          done
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "${assets[@]}" --clobber
+            gh release edit "$tag" --notes-file .github/kaibot-dmg-notes.md
+          else
+            gh release create "$tag" "${assets[@]}" \
+              --title "KaiBot $version (macOS)" \
+              --notes-file .github/kaibot-dmg-notes.md
+          fi

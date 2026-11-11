@@ -1,5 +1,7 @@
+import { execFile } from "node:child_process";
 import { chmod, lstat, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import { promisify } from "node:util";
 import { LICENSE_FILES } from "./cua-linux-release.mjs";
 import {
   executableTarget,
@@ -11,6 +13,8 @@ import { pinnedDuckdbVersion, pinnedOnePasswordVersion, pinnedResvgVersion, veri
 import { LIPO_ARCH, isMachO, writeThinMachO } from "./mac-thin.mjs";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+const execFileAsync = promisify(execFile);
+const CODESIGN_MAX_BUFFER = 16 * 1024 * 1024;
 
 async function requireRealDirectory(directory, mode = 0o755) {
   const details = await lstat(directory);
@@ -106,6 +110,21 @@ async function thinMacPlatformTools(resources, arch) {
   }
 }
 
+// Apple silicon refuses to launch an unsigned bundle, and this fork has no
+// Developer ID. electron-builder is told `mac.identity: null` (it skips its own
+// signing), and the release workflow opts in here with KAI_BOT_ADHOC_SIGN=1 so
+// both built apps get a local ad-hoc signature. It is enough to run, not enough
+// to pass Gatekeeper after download: users still clear the quarantine flag.
+async function adhocSign(context) {
+  const productFilename = context.packager?.appInfo?.productFilename;
+  if (!productFilename) throw new Error("afterPack: ad-hoc signing needs the packaged product name");
+  const app = path.join(context.appOutDir, `${productFilename}.app`);
+  await requireRealDirectory(app);
+  const options = { maxBuffer: CODESIGN_MAX_BUFFER };
+  await execFileAsync("/usr/bin/codesign", ["--force", "--deep", "--sign", "-", "--timestamp=none", app], options);
+  await execFileAsync("/usr/bin/codesign", ["--verify", "--deep", "--strict", app], options);
+}
+
 // electron-builder normalizes copied resource directories to 0775. That is
 // unsafe for a root-owned executable path after DEB/AppImage installation, so
 // repair and revalidate the exact tree after resources are copied and before
@@ -130,7 +149,10 @@ export default async function afterPack(context) {
     await verifyBrowserBundle(browserRoot, `${context.electronPlatformName}-${arch}`);
   }
   await validateDuckdb(resources, context.electronPlatformName, arch, Boolean(context.packager));
-  if (context.electronPlatformName === "darwin") await thinMacPlatformTools(resources, arch);
+  if (context.electronPlatformName === "darwin") {
+    await thinMacPlatformTools(resources, arch);
+    if (process.env.KAI_BOT_ADHOC_SIGN === "1") await adhocSign(context);
+  }
 
   if (context.electronPlatformName !== "linux") return;
 
