@@ -13,6 +13,9 @@ import { openKeySettings } from "./keys/key-focus";
 const KEY_URL = { jev: "https://typesafe.ai", openrouter: "https://openrouter.ai/keys" } as const;
 /** The room decision budget in server/decider/room-routing.ts; slower falls back to the lead. */
 const ROOM_BUDGET_MS = 1_500;
+/** A key may travel over TLS anywhere, or over plain http only to this machine. */
+const HTTPS_ENDPOINT = /^https:\/\//i;
+const LOOPBACK_ENDPOINT = /^http:\/\/(?:localhost|127(?:\.\d{1,3}){3}|\[::1\])(?::\d+)?(?:[/?#]|$)/i;
 
 type Provider = "jev" | "openrouter";
 type ModelList = { source: "openrouter" | "builtin"; models: Array<{ id: string; name: string; group: "recommended" | "more"; api?: "chat" | "decisions" }> };
@@ -112,6 +115,11 @@ export function DecisionModelSettings() {
   const [error, setError] = useState<string | null>(null);
   const [verdict, setVerdict] = useState<{ ok: boolean; text: string } | null>(null);
   const [models, setModels] = useState<ModelList | null>(null);
+  const [endpointUrl, setEndpointUrl] = useState("");
+  const [endpointModel, setEndpointModel] = useState("");
+  const [savingEndpoint, setSavingEndpoint] = useState(false);
+  const [endpointError, setEndpointError] = useState<string | null>(null);
+  const [endpointVerdict, setEndpointVerdict] = useState<string | null>(null);
   const draft = value.trim();
   const clearing = !draft && ownKey;
   const keyHint: LocaleKey | null = !openrouter || included
@@ -149,6 +157,11 @@ export function DecisionModelSettings() {
     return () => { cancelled = true; };
   }, [openrouter, models]);
 
+  // The model name is not a secret, so Settings can show what the gateway routes on.
+  useEffect(() => {
+    if (!openrouter) setEndpointModel(decider?.model ?? "");
+  }, [openrouter, decider?.model]);
+
   const choose = (decision: { provider: Provider } | { openrouterModel: string; openrouterApi: "chat" | "decisions" }) => {
     setValue("");
     setVerdict(null);
@@ -170,6 +183,50 @@ export function DecisionModelSettings() {
       setError(cause instanceof Error ? cause.message : String(cause));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveEndpoint = async () => {
+    if (savingEndpoint) return;
+    const url = endpointUrl.trim();
+    if (url && !HTTPS_ENDPOINT.test(url) && !LOOPBACK_ENDPOINT.test(url)) {
+      setEndpointError(t("decider.endpoint.invalid"));
+      return;
+    }
+    setSavingEndpoint(true);
+    setEndpointError(null);
+    setEndpointVerdict(null);
+    try {
+      applied(await api<ConfigStatus>("/api/config", {
+        method: "PUT",
+        body: JSON.stringify({ decider: { baseUrl: url, model: endpointModel.trim() } }),
+      }));
+      setEndpointUrl("");
+      setEndpointVerdict(t("decider.endpoint.saved"));
+    } catch (cause) {
+      setEndpointError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setSavingEndpoint(false);
+    }
+  };
+
+  const resetEndpoint = async () => {
+    if (savingEndpoint) return;
+    setSavingEndpoint(true);
+    setEndpointError(null);
+    setEndpointVerdict(null);
+    try {
+      applied(await api<ConfigStatus>("/api/config", {
+        method: "PUT",
+        body: JSON.stringify({ decider: { baseUrl: "", model: "" } }),
+      }));
+      setEndpointUrl("");
+      setEndpointModel("");
+      setEndpointVerdict(t("decider.endpoint.resetDone"));
+    } catch (cause) {
+      setEndpointError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setSavingEndpoint(false);
     }
   };
 
@@ -219,6 +276,71 @@ export function DecisionModelSettings() {
           <option value="openrouter">{t("decider.provider.openrouter")}</option>
         </Select>
       </SettingRow>
+      {!openrouter && (
+        <Card title={t("decider.endpoint.title")}>
+          <p className="mb-3 text-[12px] leading-relaxed text-ink-secondary">{t("decider.endpoint.detail")}</p>
+          <div className="space-y-2">
+            <label className="block text-[12px] font-medium text-ink" htmlFor="decider-base-url-input">{t("decider.endpoint.baseUrl")}</label>
+            <input
+              id="decider-base-url-input"
+              type="url"
+              data-testid="decider-base-url"
+              value={endpointUrl}
+              onChange={(event) => { setEndpointVerdict(null); setEndpointError(null); setEndpointUrl(event.target.value); }}
+              onKeyDown={(event) => event.key === "Enter" && void saveEndpoint()}
+              placeholder={t("decider.endpoint.baseUrlPlaceholder")}
+              aria-label={t("decider.endpoint.baseUrl")}
+              autoComplete="off"
+              spellCheck={false}
+              disabled={savingEndpoint}
+              className="w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[13px] text-ink placeholder:text-ink-secondary focus:outline-none"
+            />
+            <p role="status" data-testid="decider-endpoint-status" className="text-[12px] text-ink-secondary">
+              {decider?.customBaseUrl ? t("decider.endpoint.custom") : t("decider.endpoint.default")}
+            </p>
+            <label className="block pt-1 text-[12px] font-medium text-ink" htmlFor="decider-endpoint-model-input">{t("decider.endpoint.model")}</label>
+            <input
+              id="decider-endpoint-model-input"
+              type="text"
+              data-testid="decider-endpoint-model"
+              value={endpointModel}
+              onChange={(event) => { setEndpointVerdict(null); setEndpointError(null); setEndpointModel(event.target.value); }}
+              onKeyDown={(event) => event.key === "Enter" && void saveEndpoint()}
+              placeholder={t("decider.endpoint.modelPlaceholder")}
+              aria-label={t("decider.endpoint.model")}
+              autoComplete="off"
+              spellCheck={false}
+              disabled={savingEndpoint}
+              className="w-full rounded-lg border border-hairline/40 bg-inset px-3 py-2 text-[13px] text-ink placeholder:text-ink-secondary focus:outline-none"
+            />
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                data-testid="decider-endpoint-save"
+                onClick={() => void saveEndpoint()}
+                disabled={savingEndpoint}
+                className="flex cursor-pointer items-center justify-center gap-1.5 rounded-lg bg-control px-3 py-2 text-[13px] text-ink hover:bg-raised-hover disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {savingEndpoint ? <Loader2 size={13} className="animate-spin" /> : <><Check size={13} />{t("common.save")}</>}
+              </button>
+              {decider?.customBaseUrl && (
+                <button
+                  type="button"
+                  data-testid="decider-endpoint-reset"
+                  onClick={() => void resetEndpoint()}
+                  disabled={savingEndpoint}
+                  className="cursor-pointer rounded-lg border border-hairline/40 px-3 py-2 text-[13px] text-ink-secondary hover:bg-raised/50 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {t("decider.endpoint.reset")}
+                </button>
+              )}
+            </div>
+            {endpointError && <p role="alert" className="text-[12px] text-danger">{endpointError}</p>}
+            {endpointVerdict && <p role="status" className="text-[12px] text-success">{endpointVerdict}</p>}
+            <p className="text-[12px] leading-relaxed text-ink-secondary">{t("decider.endpoint.testHint")}</p>
+          </div>
+        </Card>
+      )}
       {openrouter && (
         <SettingRow title={t("decider.model.label")} subtitle={models?.source === "builtin" ? t("decider.model.builtinNote") : undefined}>
           <Select className="w-64 max-w-full"

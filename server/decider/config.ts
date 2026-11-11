@@ -48,6 +48,8 @@ export const deciderConfigSchema = z.object({
     .max(2048)
     .refine((value) => !value || /^https?:\/\//i.test(value), "the decision model address must start with http:// or https://")
     .optional(),
+  /** Jev only: the model name a compatible gateway routes on; absent is `jev-latest`. */
+  model: z.string().trim().max(128).optional(),
   openrouterBaseUrl: z
     .string()
     .trim()
@@ -63,6 +65,8 @@ export interface DeciderConfig {
   provider?: "jev" | "openrouter" | "off";
   key?: string;
   baseUrl?: string;
+  /** Jev only: the model name a compatible gateway routes on; absent is `jev-latest`. */
+  model?: string;
   openrouterKey?: string;
   openrouterModel?: string;
   /** Which OpenRouter API `openrouterModel` is served by: absent is `chat`. */

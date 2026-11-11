@@ -24,6 +24,14 @@ describe("Settings → Decision and extraction", () => {
     expect(html).toMatch(/<button[^>]*>(?:<svg[\s\S]*?<\/svg>)?Decision and extraction<\/button>/);
   });
 
+  it("offers a Jev-compatible endpoint and model for a self-hosted gateway", async () => {
+    const { DecisionModelSettings } = await import("./DecisionModelSettings");
+    const html = renderToStaticMarkup(createElement(StoreProvider, null, createElement(DecisionModelSettings)));
+    expect(html).toContain('data-testid="decider-base-url"');
+    expect(html).toContain('data-testid="decider-endpoint-model"');
+    expect(html).toContain('data-testid="decider-endpoint-save"');
+  });
+
   it("matches searches for decision, extraction, jev, typesafe, cloudflare, routing and auto", async () => {
     const { SECTIONS, sectionMatches } = await import("./SettingsModal");
     const section = SECTIONS.find((entry) => entry.id === "decisionModel")!;

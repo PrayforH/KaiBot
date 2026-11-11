@@ -102,8 +102,10 @@ export interface ConfigStatus {
    * the one under Settings → API keys); `sharedKey`: that one is on file. */
   decider?: {
     provider: "jev" | "workersai" | "openrouter";
-    /** The OpenRouter model in use; present only while OpenRouter is the provider. */
+    /** The model in use: OpenRouter's, or the Jev-compatible gateway's. */
     model?: string;
+    /** Jev only: a base URL other than the default is saved. The URL itself is never echoed. */
+    customBaseUrl?: boolean;
     configured: boolean;
     keySource?: "own" | "shared";
     sharedKey?: boolean;

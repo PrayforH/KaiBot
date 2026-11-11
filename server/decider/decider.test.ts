@@ -290,6 +290,8 @@ describe("settings rules", () => {
   it("status is booleans only and the switch reads off while no key is saved", () => {
     expect(describeDecider(ON)).toEqual({ provider: "jev", configured: true, enabled: true, jobs: { roomRouting: true } });
     expect(JSON.stringify(describeDecider({ decider: { ...ON.decider, baseUrl: "https://internal.example" } }))).not.toMatch(/tsk_|internal/);
+    expect(describeDecider({ decider: { ...ON.decider, baseUrl: "https://internal.example", model: "d1-3B" } }))
+      .toMatchObject({ provider: "jev", model: "d1-3B", customBaseUrl: true });
     expect(describeDecider({ decider: { enabled: true } })).toMatchObject({ configured: false, enabled: false });
     expect(deciderReady(ON, "roomRouting")).toBe(true);
     expect(deciderReady({ decider: { ...ON.decider, jobs: { roomRouting: false } } }, "roomRouting")).toBe(false);

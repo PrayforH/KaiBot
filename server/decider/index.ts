@@ -86,6 +86,9 @@ export function describeDecider(cfg: AppConfig) {
   return {
     provider,
     ...(provider === "openrouter" ? { model: deciderModel(cfg), api: deciderApi(cfg) } : {}),
+    // Jev's own model name is not sensitive; a custom endpoint's address is, so only its presence is reported.
+    ...(provider === "jev" && cfg.decider?.model?.trim() ? { model: cfg.decider.model.trim() } : {}),
+    ...(provider === "jev" && cfg.decider?.baseUrl?.trim() ? { customBaseUrl: true as const } : {}),
     configured: Boolean(account),
     ...(account?.keySource ? { keySource: account.keySource } : {}),
     ...(provider === "openrouter" && deciderSharedKeyUsable(cfg) ? { sharedKey: true as const } : {}),
@@ -114,6 +117,8 @@ export function deciderSavePatch(
 ): { ok: true; patch: Partial<DeciderConfig> } | ({ ok: false } & UserError) {
   const next: Partial<DeciderConfig> = { ...patch };
   for (const field of [...KEY_FIELDS, "workersAiAccountId"] as const) if (typeof patch[field] === "string") next[field] = patch[field].trim();
+  if (typeof next.baseUrl === "string") next.baseUrl = next.baseUrl.trim();
+  if (typeof next.model === "string") next.model = next.model.trim();
   const saving = KEY_FIELDS.some((field) => Boolean(next[field]));
   const clearing = KEY_FIELDS.some((field) => next[field] === "");
   const after = (field: (typeof KEY_FIELDS)[number] | "workersAiAccountId") => (typeof next[field] === "string" ? next[field] : current?.[field]?.trim()) || "";
@@ -302,9 +307,17 @@ export function createDecider(deps: DeciderDeps): Decider {
     };
   }
 
-  const openrouterRequest = (cfg: AppConfig, account: HelperAccount, input: { model?: string; api?: OpenRouterApi } = {}) =>
-    account.provider !== "openrouter" ? {}
-      : input.model?.trim() ? { model: input.model.trim(), api: input.api ?? "chat" } : { model: deciderModel(cfg), api: deciderApi(cfg) };
+  const deciderRequest = (cfg: AppConfig, account: HelperAccount, input: { model?: string; api?: OpenRouterApi } = {}) => {
+    if (account.provider === "openrouter") {
+      return input.model?.trim() ? { model: input.model.trim(), api: input.api ?? "chat" } : { model: deciderModel(cfg), api: deciderApi(cfg) };
+    }
+    // A self-hosted Jev gateway may route on the model name; the included relay keeps its own.
+    if (account.provider === "jev" && !account.included) {
+      const model = input.model?.trim() || cfg.decider?.model?.trim();
+      return model ? { model } : {};
+    }
+    return {};
+  };
 
   async function ask<Qs extends Record<string, DeciderQuestion>>(
     seam: DeciderSeam,
@@ -319,7 +332,7 @@ export function createDecider(deps: DeciderDeps): Decider {
       const account = deciderAccount(cfg, seam)!;
       // Through the included token, only the exact requests the relay takes.
       if (account.included && !relayAccepts(seam, state, questions)) return { ok: false, reason: "misconfigured" };
-      return await call(seam, account, { ...openrouterRequest(cfg, account), state, questions }, options);
+      return await call(seam, account, { ...deciderRequest(cfg, account), state, questions }, options);
     } catch {
       return { ok: false, reason: "malformed" };
     }
@@ -352,7 +365,7 @@ export function createDecider(deps: DeciderDeps): Decider {
         if (!account) return { ok: false, reason: "no_key" };
         const questions = { answer: { type: "yesno" as const, instructions: KEY_CHECK_QUESTION } };
         if (account.included && !relayAccepts("keyCheck", KEY_CHECK_STATE, questions)) return { ok: false, reason: "misconfigured" };
-        return single(await call("keyCheck", account, { ...openrouterRequest(cfg, account, input), state: KEY_CHECK_STATE, questions }, { timeoutMs: KEY_CHECK_TIMEOUT_MS, ...options }));
+        return single(await call("keyCheck", account, { ...deciderRequest(cfg, account, input), state: KEY_CHECK_STATE, questions }, { timeoutMs: KEY_CHECK_TIMEOUT_MS, ...options }));
       } catch {
         return { ok: false, reason: "malformed" };
       }

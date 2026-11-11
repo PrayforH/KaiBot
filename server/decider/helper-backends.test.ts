@@ -171,6 +171,14 @@ function fromWire(body: { state: unknown; questions: Record<string, { type: stri
 }
 
 describe("the relay's seams, from the fixtures shared with Cloud's Admin", () => {
+  it("a self-hosted Jev gateway gets the model name it routes on", () => {
+    const questions: Record<string, DeciderQuestion> = {
+      answer: { type: "choice", instructions: "Pick one.", options: { a: "A", b: "B" } },
+    };
+    expect(jevRequestBody({}, questions, "d1-3B").model).toBe("d1-3B");
+    expect(jevRequestBody({}, questions).model).toBe("jev-latest");
+  });
+
   it.each(relayFixtures.cases.map((fixture) => [fixture.name, fixture] as const))("%s", (_name, fixture) => {
     const { state, questions } = fromWire(fixture.body as never);
     expect(relayAccepts(fixture.seam as DeciderSeam, state, questions)).toBe(fixture.accepts);
