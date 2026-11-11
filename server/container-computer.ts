@@ -23,7 +23,10 @@ export type CommandRunner = (
 ) => Promise<{ stdout: string }>;
 
 export const CUA_DRIVER_VERSION = "0.37.0";
-export const BASE_IMAGE_REPOSITORY = "docker.io/trycua/xfce-cua";
+// Local deployment note: Docker Hub is unreachable here. This mirror serves the
+// same content-addressed manifest, so BASE_IMAGE_DIGEST (and the label checks
+// that use it) stay unchanged.
+export const BASE_IMAGE_REPOSITORY = "docker.1ms.run/trycua/xfce-cua";
 // Official multi-architecture Cua XFCE 0.1.0 manifest (amd64 + arm64).
 export const BASE_IMAGE_DIGEST = "sha256:274eb636f5cf3fc58f705916ee72b7a701270b3877369d08533a385c5325be9b";
 export const BASE_IMAGE = `${BASE_IMAGE_REPOSITORY}@${BASE_IMAGE_DIGEST}`;

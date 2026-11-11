@@ -1,9 +1,9 @@
 appId: com.openmausbot.app
-productName: OpenMausBot
-artifactName: OpenMausBot-${version}-${arch}.${ext}
+productName: KaiBot
+artifactName: KaiBot-${version}-${arch}.${ext}
 
 protocols:
-  - name: OpenMausBot package install
+  - name: KaiBot package install
     schemes: [openmausbot]
 
 # In-app auto-update reads latest-mac.yml + the .zip (macOS) or latest.yml +

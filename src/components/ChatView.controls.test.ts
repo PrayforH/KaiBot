@@ -247,9 +247,14 @@ describe("header name", () => {
       fixture.advanced = advanced;
       const busyMarkup = renderToStaticMarkup(createElement(ChatView, { bot: { ...bot, busy: true, tasks: (bot.tasks ?? []).map((task) => ({ ...task, busy: true })) } }));
       const idleMarkup = renderToStaticMarkup(createElement(ChatView, { bot: { ...bot, busy: false } }));
+      // The bot inside the pill animates on its own clock: busy and idle sit on different frames. Compare the pill's
+      // frame and content, not the mascot's current animation frame.
       const pillOf = (markup: string) => {
         const start = markup.indexOf("data-chathead-pill");
-        return markup.slice(start, markup.indexOf("data-chathead-status", start));
+        return markup.slice(start, markup.indexOf("data-chathead-status", start))
+          .replace(/ data-bot-icon-frame="\d+"/g, "")
+          .replace(/mask-(?:size|position):[^;"]+/g, "")
+          .replace(/;transition:transform [^;"]+/g, "");
       };
       expect(pillOf(busyMarkup)).not.toContain("animate-status-pulse");
       expect(pillOf(busyMarkup)).toBe(pillOf(idleMarkup));
@@ -599,14 +604,14 @@ describe("thread control placement", () => {
     fixture.localMessage = "Screen Recording required";
     window.ogb = { platform: "darwin", permOpenSettings: vi.fn(), relaunch: vi.fn() } as unknown as NonNullable<Window["ogb"]>;
     const screen = renderToStaticMarkup(createElement(ErrorRow, {
-      message: "OpenMausBot can't use this computer yet — embedded host failed: Screen Recording required. Relaunch OpenMausBot after granting any missing macOS permission.",
+      message: "KaiBot can't use this computer yet — embedded host failed: Screen Recording required. Relaunch KaiBot after granting any missing macOS permission.",
     }));
     expect(screen).toContain("Open Screen Recording Settings");
-    expect(screen).toContain("Relaunch OpenMausBot");
+    expect(screen).toContain("Relaunch KaiBot");
     expect(screen).not.toContain("Open Accessibility Settings");
     fixture.localMessage = "Accessibility required";
     const accessibility = renderToStaticMarkup(createElement(ErrorRow, {
-      message: "OpenMausBot can't use this computer yet — Accessibility required",
+      message: "KaiBot can't use this computer yet — Accessibility required",
     }));
     expect(accessibility).toContain("Open Accessibility Settings");
     expect(accessibility).not.toContain("Open Screen Recording Settings");

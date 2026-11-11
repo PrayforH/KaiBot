@@ -102,7 +102,7 @@ export const MANAGED_TEXT = Object.freeze({
   denied: "Sign-in was denied, expired or already used. Start again on this computer.",
   completeFailed: "Could not complete sign-in. Check your Admin address and start again.",
   removed: "This computer's company sign-in couldn't be read, so it was removed. Sign in again.",
-  restoreFailed: "The saved company sign-in can't be read right now. OpenMausBot tries again every minute.",
+  restoreFailed: "The saved company sign-in can't be read right now. KaiBot tries again every minute.",
   startFailed: "Could not start company sign-in. Check the Admin portal address and your connection.",
 });
 const said = (...codes) => ({ message: codes.map(code => MANAGED_TEXT[code]).join(" "), messageCodes: codes });

@@ -25,7 +25,7 @@ import { startFakeOAuth } from "./testing/fake-oauth-server.ts";
 import { freePortBlock, withFreeSignInPort } from "./testing/ports.ts";
 import { openSse } from "./testing/sse.ts";
 import { STARTER_COLORS } from "./bot-look.ts";
-import { DEFAULT_MASCOT_BODY } from "../shared/mascot-bodies.ts";
+import { BOT_ICON_SHAPES } from "../shared/bot-icons.ts";
 import { readHandoffs } from "./testing/handoff-rows.ts";
 import { FILE_MAX_BYTES, IMAGE_MAX_BYTES } from "./attachments.ts";
 import { computerPrompt, SIGN_IN_PROMPT } from "./system-prompt.ts";
@@ -1597,10 +1597,10 @@ describe("harness HTTP API", () => {
     expect(room.messages.find(
       (message: { id: string }) => message.id === "restarted-goal-card",
     )).toMatchObject({
-      text: "Goal failed: OpenMausBot restarted before this goal finished.",
+      text: "Goal failed: KaiBot restarted before this goal finished.",
       goalRun: {
         status: "failed",
-        detail: "OpenMausBot restarted before this goal finished.",
+        detail: "KaiBot restarted before this goal finished.",
         turnCount: 2,
         finishedAt: expect.any(Number),
       },
@@ -6336,7 +6336,7 @@ describe("harness HTTP API", () => {
         .find((message: { id: string }) => message.id === messageId);
       expect(directCard).toMatchObject({
         kind: "secret",
-        text: "Securely provide the OpenAI API key from OpenMausBot on your phone or computer. It is never added to chat.",
+        text: "Securely provide the OpenAI API key from KaiBot on your phone or computer. It is never added to chat.",
       });
       expect(directCard.secret.description).toContain(
         `${bot.name} can use it but never read it back.`,
@@ -6477,7 +6477,7 @@ describe("harness HTTP API", () => {
       expect((await card(firstCard.messageId)).signIn).toMatchObject({ site: "example.com", superseded: true });
       expect(await card(secondCard.messageId)).toMatchObject({
         kind: "signin",
-        text: `${bot.name} needs you to sign in to example.com. Open this conversation in OpenMausBot to sign in, then press Done.`,
+        text: `${bot.name} needs you to sign in to example.com. Open this conversation in KaiBot to sign in, then press Done.`,
         signIn: { url: "https://www.example.com/", site: "example.com", place: "browser", reason: "Still behind a login." },
       });
       expect((await card(secondCard.messageId)).signIn.superseded).toBeUndefined();
@@ -7908,7 +7908,7 @@ describe("harness HTTP API", () => {
       const plain = (await api("POST", "/api/bots", { name: "Wren", useDefaults: false })).body.bot;
       await api("DELETE", `/api/bots/${plain.id}`);
       const fresh = (await stream.until((frame) => frame.kind === "bot" && frame.bot?.id === plain.id)).bot;
-      expect(fresh.mascotBody).toBe(DEFAULT_MASCOT_BODY);
+      expect(BOT_ICON_SHAPES).toContain(fresh.mascotBody);
       expect(STARTER_COLORS).toContain(fresh.color);
     } finally {
       stream.close();
@@ -11063,7 +11063,7 @@ describe("harness HTTP API", () => {
         .find((message: { id: string }) => message.id === messageId);
       expect(roomCard).toMatchObject({
         kind: "secret",
-        text: "Securely provide the OpenAI API key from OpenMausBot on your phone or computer. It is never added to chat.",
+        text: "Securely provide the OpenAI API key from KaiBot on your phone or computer. It is never added to chat.",
         from: { botId: second.id, name: second.name, color: second.color },
       });
 
