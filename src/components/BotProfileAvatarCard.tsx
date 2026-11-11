@@ -11,7 +11,7 @@ import {
   type MausState,
 } from "@/lib/mascot";
 import { BOT_AVATAR_CROPS } from "../../shared/bot-avatar";
-import { MASCOT_BODY_IDS } from "../../shared/mascot-bodies";
+import { BOT_ICON_SHAPES, resolvedBotIconShape } from "../../shared/bot-icons";
 import { FESTIVAL_IDS, FESTIVALS, type BotBodyId } from "../../shared/bot-body";
 import { BotAvatar, MausAvatar } from "./Avatar";
 import { AvatarImageGenerator } from "./AvatarImageGenerator";
@@ -32,6 +32,7 @@ export function BotProfileAvatarCard({
   onPatch: (patch: AvatarPatch) => void;
 }) {
   const { fileRef, crop, uploading, generating, busy, error, upload, removeImage, generate } = useAvatarImage(bot, onPatch);
+  const selectedShape = resolvedBotIconShape(bot.mascotBody, bot.id);
 
   return (
     <div className="overflow-hidden rounded-xl border border-hairline/40 bg-card">
@@ -137,7 +138,7 @@ export function BotProfileAvatarCard({
                   title={expressionName(expression)}
                   aria-label={t("mascot.useExpression", { expression: expressionName(expression) })}
                 >
-                  <MausAvatar color={bot.color} faceColor={bot.mascotFaceColor} bodyId={bot.mascotBody ?? undefined} state={expression} size={42} animated={false} />
+                  <MausAvatar color={bot.color} faceColor={bot.mascotFaceColor} bodyId={selectedShape} state={expression} size={42} animated={false} />
                 </button>
               ))}
             </div>
@@ -168,8 +169,8 @@ export function BotProfileAvatarCard({
               {t("botIdentity.body")}
             </div>
             <div className="grid grid-cols-5 gap-1.5">
-              {MASCOT_BODY_IDS.map((id) => (
-                <BodyButton key={id} id={id} name={bodyName(id)} bot={bot} busy={busy} onPatch={onPatch} />
+              {BOT_ICON_SHAPES.map((id) => (
+                <BodyButton key={id} id={id} name={bodyName(id)} bot={bot} busy={busy} selected={selectedShape === id} onPatch={onPatch} />
               ))}
             </div>
             {FESTIVAL_IDS.map((festival) => (
@@ -179,7 +180,7 @@ export function BotProfileAvatarCard({
                 </div>
                 <div className="grid grid-cols-5 gap-1.5" data-festival-bodies={festival}>
                   {FESTIVALS[festival].bodies.map((id) => (
-                    <BodyButton key={id} id={id} name={bodyName(id)} bot={bot} busy={busy} onPatch={onPatch} />
+                    <BodyButton key={id} id={id} name={bodyName(id)} bot={bot} busy={busy} selected={bot.mascotBody === id} onPatch={onPatch} />
                   ))}
                 </div>
               </div>
@@ -200,14 +201,14 @@ export function BotProfileAvatarCard({
   );
 }
 
-function BodyButton({ id, name, bot, busy, onPatch }: {
+function BodyButton({ id, name, bot, busy, selected, onPatch }: {
   id: BotBodyId;
   name: string;
   bot: Bot;
   busy: boolean;
+  selected: boolean;
   onPatch: (patch: AvatarPatch) => void;
 }) {
-  const selected = (bot.mascotBody ?? "cursor") === id;
   return (
     <button
       type="button"

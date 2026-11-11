@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { StoreProvider, type Bot } from "@/state/store";
-import { MASCOT_BODY_IDS, MASCOT_BODIES } from "../../shared/mascot-bodies";
+import { BOT_ICON_NAMES, BOT_ICON_SHAPES, resolvedBotIconShape } from "../../shared/bot-icons";
 import { CARVED_BODIES, DIWALI_BODY_IDS, HALLOWEEN_BODY_IDS } from "../../shared/carved-bodies";
 import { BotProfileAvatarCard } from "./BotProfileAvatarCard";
 
@@ -39,12 +39,12 @@ function renderCard(bot: Bot) {
 }
 
 describe("BotProfileAvatarCard body picker", () => {
-  it("renders one option per body catalog entry, labeled by name", () => {
+  it("renders one option per bot icon shape, labeled by name", () => {
     const markup = renderCard(makeBot());
 
     expect(markup).toContain(">Body<");
-    for (const id of MASCOT_BODY_IDS) {
-      expect(markup).toContain(`aria-label="Use the ${MASCOT_BODIES[id].name} body"`);
+    for (const id of BOT_ICON_SHAPES) {
+      expect(markup).toContain(`aria-label="Use the ${BOT_ICON_NAMES[id]} body"`);
     }
   });
 
@@ -60,18 +60,22 @@ describe("BotProfileAvatarCard body picker", () => {
     expect(markup).toContain(`aria-pressed="false" aria-label="Use the ${CARVED_BODIES.witch.name} body"`);
   });
 
-  it("marks the current body pressed and the rest unpressed, defaulting to cursor", () => {
-    const markup = renderCard(makeBot());
+  it("marks the bot's own stable shape pressed and the rest unpressed when it has not chosen one", () => {
+    const bot = makeBot();
+    const shape = resolvedBotIconShape(bot.mascotBody, bot.id);
+    const other = BOT_ICON_SHAPES.find((id) => id !== shape)!;
+    const markup = renderCard(bot);
 
-    expect(markup).toContain(`aria-pressed="true" aria-label="Use the ${MASCOT_BODIES.cursor.name} body"`);
-    expect(markup).toContain(`aria-pressed="false" aria-label="Use the ${MASCOT_BODIES.star.name} body"`);
+    expect(markup).toContain(`aria-pressed="true" aria-label="Use the ${BOT_ICON_NAMES[shape]} body"`);
+    expect(markup).toContain(`aria-pressed="false" aria-label="Use the ${BOT_ICON_NAMES[other]} body"`);
   });
 
   it("reflects an explicitly chosen body", () => {
     const markup = renderCard(makeBot({ mascotBody: "star" }));
+    const other = BOT_ICON_SHAPES.find((id) => id !== "star")!;
 
-    expect(markup).toContain(`aria-pressed="true" aria-label="Use the ${MASCOT_BODIES.star.name} body"`);
-    expect(markup).toContain(`aria-pressed="false" aria-label="Use the ${MASCOT_BODIES.cursor.name} body"`);
+    expect(markup).toContain(`aria-pressed="true" aria-label="Use the ${BOT_ICON_NAMES.star} body"`);
+    expect(markup).toContain(`aria-pressed="false" aria-label="Use the ${BOT_ICON_NAMES[other]} body"`);
   });
 
   it("offers zoom and drag framing for a custom image", () => {
@@ -95,7 +99,7 @@ describe("BotProfileAvatarCard body picker", () => {
     const markup = renderCard(makeBot({ avatarCrop: "circle" }));
 
     expect(markup).not.toContain(">Body<");
-    expect(markup).not.toContain(`aria-label="Use the ${MASCOT_BODIES.cursor.name} body"`);
+    expect(markup).not.toContain(`aria-label="Use the ${BOT_ICON_NAMES.star} body"`);
   });
 
   it("hides the body picker for every flat crop, not just circle", () => {
