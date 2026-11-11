@@ -334,10 +334,10 @@ describe("MausBot, every person's helper", () => {
       const arriving = cloud.createBot({ name: "MausBot" }, { id: "desk-maus-000002", seedMessages: false });
       expect(await arrive(cloud, arriving.id, fields({ defaultBot: {}, sidebarHidden: true }), "Amit's MacBook")).toBe(200);
       expect(placeMausBots(cloud).map((bot) => bot.id)).toEqual([theirs.id]);
-      expect(cloud.bot(theirs.id)).toMatchObject({ name: "MausBot", chiefOfStaff: true });
+      expect(cloud.bot(theirs.id)).toMatchObject({ name: "KaiBot", chiefOfStaff: true });
       expect(cloud.bot(theirs.id)?.hidden).toBeFalsy();
       const moved = cloud.bot(arriving.id)!;
-      expect(moved).toMatchObject({ name: "MausBot (from Amit's MacBook)" });
+      expect(moved).toMatchObject({ name: "KaiBot (from Amit's MacBook)" });
       expect([moved.defaultBot, moved.sidebarHidden, moved.hidden]).toEqual([undefined, undefined, undefined]);
       expect(defaultBotPatchRefusal(moved, { hidden: true })).toBeNull();
       expect(defaultBotPatchRefusal(cloud.bot(theirs.id), { hidden: true })).toContain("can't be deleted or archived");
@@ -372,7 +372,7 @@ describe("MausBot, every person's helper", () => {
       expect(cloud.bot(jarvis.id)?.defaultBot).toBeUndefined();
       const unnamed = cloud.createBot({ name: "MausBot" }, { id: "desk-maus-000005", seedMessages: false });
       expect(await arrive(cloud, unnamed.id, fields({ defaultBot: {} }))).toBe(200);
-      expect(cloud.bot(unnamed.id)).toMatchObject({ name: "MausBot (from another computer)" });
+      expect(cloud.bot(unnamed.id)).toMatchObject({ name: "KaiBot (from another computer)" });
       expect(placeMausBots(cloud).map((bot) => bot.id)).toEqual([theirs.id]);
     });
 
