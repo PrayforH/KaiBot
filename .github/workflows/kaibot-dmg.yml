@@ -30,10 +30,10 @@ jobs:
   dmg:
     name: macOS arm64 + x64 (ad-hoc signed)
     # macos-14 is not an image this account can use ("configuration
-    # macos-14-arm64-us-default is not supported"), so stay on macos-15. Its
-    # arm64 pool is sometimes slow to hand out a runner; retry the run if the
-    # job is cancelled with "not acquired by Runner of type hosted".
-    runs-on: macos-15
+    # macos-14-arm64-us-default is not supported"), and the arm64 macos-15 pool
+    # often runs out of capacity before a job is acquired ("not acquired by
+    # Runner of type hosted"). The Intel image builds the same two apps.
+    runs-on: macos-15-intel
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
