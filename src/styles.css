@@ -2764,18 +2764,6 @@ html[data-cloud-intent-morph] [data-tour="composer"] { view-transition-name: clo
   43%, 58% { opacity: 1; transform: translate(18px, -15px) scale(0.42); }
 }
 
-/* The bot icon's own two gestures; the body-wide motions are shared with the mascot above. */
-@keyframes bot-icon-blink {
-  0%, 100% { transform: scaleY(1); }
-  45% { transform: scaleY(0.84); }
-}
-
-@keyframes bot-icon-spin {
-  0% { transform: rotate(0deg) scale(1); }
-  55% { transform: rotate(200deg) scale(1.08); }
-  100% { transform: rotate(360deg) scale(1); }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .maus-motion *,
   .maus-motion {

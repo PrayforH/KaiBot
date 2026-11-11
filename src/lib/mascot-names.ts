@@ -1,4 +1,3 @@
-import { BOT_ICON_NAMES, botIconShape } from "../../shared/bot-icons";
 import { CARVED_BODIES } from "../../shared/carved-bodies";
 import { MASCOT_BODIES } from "../../shared/mascot-bodies";
 import type { BotBodyId, FestivalId } from "../../shared/bot-body";
@@ -11,7 +10,7 @@ const BODIES = [...Object.values(MASCOT_BODIES), ...Object.values(CARVED_BODIES)
 const named = (key: string, fallback: string): string => Object.hasOwn(en, key) ? t(key as LocaleKey) : fallback;
 
 export const bodyName = (id: BotBodyId): string =>
-  named(`mascot.body.${id}`, BODIES.find((body) => body.id === id)?.name ?? BOT_ICON_NAMES[botIconShape(id)]);
+  named(`mascot.body.${id}`, BODIES.find((body) => body.id === id)?.name ?? id);
 export const colorName = (color: MausColor): string => named(`mascot.color.${color}`, color);
 export const festivalName = (festival: FestivalId): string => named(`botPanel.avatar.${festival}`, festival);
 export const expressionName = (state: string): string => named(`mascot.expression.${state}`, state);

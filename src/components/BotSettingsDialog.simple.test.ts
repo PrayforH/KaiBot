@@ -507,15 +507,15 @@ describe("the hero", () => {
 describe("the avatar editor", () => {
   const editor = (bot: Bot) => capture(() => AvatarEditorCard({ bot, activeState: "idle", onPatch: patch, onClose }));
 
-  it("shows every bot icon shape and twelve colors, with the festival bodies and the faces behind More looks", () => {
+  it("shows the ten bodies and twelve colors, with the festival bodies and the faces behind More looks", () => {
     const bot = makeBot();
     const rendered = editor(bot);
-    expect(rendered.html.match(/aria-label="Use the [\w ]+ body"/g)).toHaveLength(26);
+    expect(rendered.html.match(/aria-label="Use the \w+ body"/g)).toHaveLength(10);
     expect(rendered.html.match(/aria-label="Use \w+ mascot color"/g)).toHaveLength(12);
     expect(rendered.html).not.toContain(">Halloween<");
     expect(rendered.html).not.toContain(">Diwali<");
     expect(has(rendered, "data-avatar-face", "idle")).toBe(false);
-    expect(find(rendered, "aria-label", "Use the Cylinder body").props["aria-pressed"]).toBe(true);
+    expect(find(rendered, "aria-label", "Use the Cursor body").props["aria-pressed"]).toBe(true);
     click(find(rendered, "aria-label", "Use the Blob body"));
     expect(patch).toHaveBeenLastCalledWith({ mascotBody: "blob" });
     click(find(rendered, "aria-label", "Use blue mascot color"));
@@ -533,7 +533,7 @@ describe("the avatar editor", () => {
     click(more);
     const open = editor(bot);
     expect(find(open, "data-avatar-more").props["aria-expanded"]).toBe(true);
-    expect(open.html.match(/aria-label="Use the [\w ]+ body"/g)).toHaveLength(46);
+    expect(open.html.match(/aria-label="Use the [\w ]+ body"/g)).toHaveLength(30);
     expect(open.html).toContain(">Halloween<");
     expect(open.html).toContain(">Diwali<");
     click(find(open, "aria-label", "Use the Pumpkin body"));
@@ -565,7 +565,7 @@ describe("the avatar editor", () => {
 
   it("resets the mascot as the Advanced card does", () => {
     click(find(editor(makeBot()), "data-avatar-reset"));
-    expect(patch).toHaveBeenLastCalledWith({ avatarCrop: "mascot", color: "green", mascotExpression: null, mascotBody: "star", mascotFaceColor: null });
+    expect(patch).toHaveBeenLastCalledWith({ avatarCrop: "mascot", color: "green", mascotExpression: null, mascotBody: "cursor", mascotFaceColor: null });
   });
 
   it("edits facial feature color without changing body color or expression", () => {

@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { MausAvatar, type MausAvatarHandle, type MausAvatarProps } from "./Avatar";
+import { EFFECTS, EXPRESSIONS, POOLS } from "./CursorAvatar";
 import { mascotClock } from "./mascot-clock";
 import { UNREAD_NOTICE_MS, useUnreadNotice } from "./unread-notice";
 
@@ -62,64 +63,77 @@ afterEach(() => {
 const render = (avatars: Array<Partial<MausAvatarProps> & { ref?: React.Ref<MausAvatarHandle> }>) =>
   act(() => root.render(avatars.map((props, key) => createElement(MausAvatar, { key, color: "green", ...props }))));
 const run = (ms: number) => act(() => { vi.advanceTimersByTime(ms); });
-const frames = () => [...host.querySelectorAll("[data-bot-icon-frame]")].map((node) => node.getAttribute("data-bot-icon-frame"));
-const shapes = () => [...host.querySelectorAll("[data-bot-icon-frame]")].map((node) => node.getAttribute("data-bot-icon-shape"));
+const eyePaths = () => [...host.querySelectorAll("svg")].map((svg) => svg.querySelector("g[clip-path] path")!.getAttribute("d"));
+const toPath = (ring: Array<[number, number]>) => "M" + ring.map((p) => p[0].toFixed(2) + " " + p[1].toFixed(2)).join("L") + "Z";
 
-describe("BotIconAvatar on the shared clock", () => {
-  it("draws every animated bot from one animation frame", () => {
+describe("CursorAvatar on the shared clock", () => {
+  it("draws every animated mascot from one animation frame", () => {
     render(Array.from({ length: 12 }, () => ({ state: "working" as const, size: 96 })));
     run(100);
     frameRequests = 0;
     run(1000);
-    expect(frameRequests).toBeGreaterThan(15);
-    expect(frameRequests).toBeLessThanOrEqual(60);
+    expect(frameRequests).toBeGreaterThan(30);
+    expect(frameRequests).toBeLessThanOrEqual(70);
     expect(mascotClock().pending()).toBe(12);
   });
 
-  it("keeps a sidebar of idle bots on the pack's calm frame rate", () => {
-    render(Array.from({ length: 12 }, (_, i) => ({ state: "idle" as const, size: [24, 28, 42, 56][i % 4] })));
+  it("draws a sidebar full of working mascots 20 times a second", () => {
+    render(Array.from({ length: 12 }, (_, i) => ({ state: "working" as const, size: [24, 28, 42, 56][i % 4] })));
     run(100);
     frameRequests = 0;
     run(1000);
-    expect(frameRequests).toBeGreaterThanOrEqual(8);
-    expect(frameRequests).toBeLessThanOrEqual(20);
+    expect(frameRequests).toBeGreaterThanOrEqual(18);
+    expect(frameRequests).toBeLessThanOrEqual(21);
   });
 
-  it("paints a still bot with its state's frame and then asks for nothing", () => {
+  it("paints a still mascot with its state's face and then asks for nothing", () => {
     render([{ state: "sleeping", animated: false, size: 24 }]);
     run(100);
-    expect(frames()).toEqual(["4"]);
+    expect(eyePaths()[0]).toBe(toPath(EXPRESSIONS[POOLS.sleeping[0]][0]));
     frameRequests = 0;
     run(2000);
     expect(frameRequests).toBe(0);
     expect(mascotClock().pending()).toBe(0);
   });
 
-  it("redraws a still bot when its look changes", () => {
-    render([{ state: "idle", animated: false, size: 24, bodyId: "star" }]);
+  it("redraws a still mascot when its look changes", () => {
+    render([{ state: "idle", animated: false, size: 24, turn: 0 }]);
     run(100);
-    expect(shapes()).toEqual(["star"]);
-    render([{ state: "idle", animated: false, size: 24, bodyId: "blob" }]);
+    const eye = () => host.querySelector("g[clip-path] path")!.getAttribute("transform");
+    const before = eye();
+    render([{ state: "idle", animated: false, size: 24, turn: 40 }]);
     run(100);
-    expect(shapes()).toEqual(["blob"]);
+    expect(eye()).not.toBe(before);
     expect(mascotClock().pending()).toBe(0);
   });
 
-  it("advances an animated bot's frame over time, and a blink needs no second clock ticket", () => {
+  it("lets a small idle mascot settle to no frames, and wakes it for a blink", () => {
     const ref = createRef<MausAvatarHandle>();
-    render([{ state: "working", size: 36, ref }]);
-    run(100);
-    const before = frames()[0];
-    run(200);
-    expect(frames()[0]).not.toBe(before);
-    expect(mascotClock().pending()).toBe(1);
+    render([{ state: "idle", size: 24, ref }]);
+    run(3000);
+    expect(mascotClock().pending()).toBe(0);
+    frameRequests = 0;
+    run(2000);
+    expect(frameRequests).toBe(0);
     act(() => ref.current!.blink());
-    expect(host.innerHTML).toContain("bot-icon-blink");
-    run(300);
-    expect(mascotClock().pending()).toBe(1);
+    run(500);
+    expect(frameRequests).toBeGreaterThan(5);
+    expect(mascotClock().pending()).toBe(0);
   });
 
-  it("lets an unread bot play its notice, then draws nothing while the news waits", () => {
+  it("leaves an alert glyph's layer alone between its appearances", () => {
+    render([{ state: "confused", size: 64 }]);
+    const { period } = EFFECTS.confused!.glyph!;
+    run(period - (performance.now() % period) + 100);
+    const glyphLayer = [...host.querySelectorAll("svg g")].find((g) => (g as SVGGElement).style.opacity === "0")!;
+    const writes = vi.spyOn(glyphLayer, "setAttribute");
+    run(3000);
+    expect(writes).not.toHaveBeenCalled();
+    run(1500);
+    expect(writes).toHaveBeenCalled();
+  });
+
+  it("lets an unread mascot play its notice, then draws nothing while the news waits", () => {
     function Row({ unread }: { unread: boolean }) {
       return createElement(MausAvatar, { color: "green", state: unread ? "notifying" : "idle", size: 42, animated: useUnreadNotice(unread) });
     }
@@ -137,14 +151,14 @@ describe("BotIconAvatar on the shared clock", () => {
     expect(mascotClock().pending()).toBe(0);
   });
 
-  it("stops drawing a bot that leaves the screen", () => {
+  it("stops drawing a mascot that leaves the screen", () => {
     render([{ state: "working", size: 36 }]);
     run(200);
-    act(() => observed.callback!([{ target: host.querySelector("[data-bot-icon-shape]")!, isIntersecting: false }]));
+    act(() => observed.callback!([{ target: host.querySelector("svg")!, isIntersecting: false }]));
     frameRequests = 0;
     run(1000);
     expect(frameRequests).toBe(0);
-    act(() => observed.callback!([{ target: host.querySelector("[data-bot-icon-shape]")!, isIntersecting: true }]));
+    act(() => observed.callback!([{ target: host.querySelector("svg")!, isIntersecting: true }]));
     run(500);
     expect(frameRequests).toBeGreaterThan(5);
   });
@@ -154,8 +168,8 @@ describe("BotIconAvatar on the shared clock", () => {
     const ref = createRef<MausAvatarHandle>();
     render([{ state: "celebrate", size: 220, ref }]);
     run(200);
-    expect(frames()).toEqual(["7"]);
-    expect(host.innerHTML).not.toContain("maus-celebrate-body");
+    const svg = host.querySelector("svg")!;
+    expect(svg.querySelector("g > g:nth-child(2)")!.getAttribute("transform")).toBeNull();
     frameRequests = 0;
     act(() => { ref.current!.blink(); ref.current!.spin(); });
     run(2000);
@@ -163,7 +177,7 @@ describe("BotIconAvatar on the shared clock", () => {
     expect(mascotClock().pending()).toBe(0);
   });
 
-  it("calms an animating bot when reduced motion is switched on", () => {
+  it("calms an animating mascot when reduced motion is switched on", () => {
     render([{ state: "working", size: 36 }]);
     run(200);
     expect(mascotClock().pending()).toBe(1);
