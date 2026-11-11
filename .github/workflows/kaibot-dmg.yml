@@ -29,7 +29,9 @@ concurrency:
 jobs:
   dmg:
     name: macOS arm64 + x64 (ad-hoc signed)
-    runs-on: macos-15
+    # macos-15's pool has been slow to hand out runners; macos-14 is the same
+    # arm64 host and cross-builds the x64 app just as well.
+    runs-on: macos-14
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
